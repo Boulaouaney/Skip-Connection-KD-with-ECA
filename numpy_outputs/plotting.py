@@ -9,19 +9,19 @@ parser.add_argument('--pair_keys', type=int, help='---Indicate pair of keys uniq
 args, unparsed = parser.parse_known_args()
 
 if args.base == 'no':
-    accuracy_np = np.load(f'./train_accuracy_teacher.npy')
-    accuracy_np_val = np.load(f'./val_accuracy_teacher.npy')
-    accuracy_np_kd = np.load(f'./train_accuracy_student.npy')
-    accuracy_np_kd_val = np.load(f'./val_accuracy_student.npy')
+    accuracy_np = np.load(f'./train_accuracy_teacher_{args.pair_keys}.npy')
+    accuracy_np_val = np.load(f'./val_accuracy_teacher_{args.pair_keys}.npy')
+    accuracy_np_kd = np.load(f'./train_accuracy_student_{args.pair_keys}.npy')
+    accuracy_np_kd_val = np.load(f'./val_accuracy_student_{args.pair_keys}.npy')
     accuracy_np = accuracy_np/50000.0
     accuracy_np_val = accuracy_np_val/10000.0
     accuracy_np_kd = accuracy_np_kd/50000.0
     accuracy_np_kd_val = accuracy_np_kd_val/10000.0
 
-    loss_np = np.load(f'./train_loss_teacher.npy')
-    loss_np_val = np.load(f'./val_loss_teacher.npy')
-    loss_np_kd = np.load(f'./train_loss_student.npy')
-    loss_np_kd_val = np.load(f'./val_loss_student.npy')
+    loss_np = np.load(f'./train_loss_teacher_{args.pair_keys}.npy')
+    loss_np_val = np.load(f'./val_loss_teacher_{args.pair_keys}.npy')
+    loss_np_kd = np.load(f'./train_loss_student_{args.pair_keys}.npy')
+    loss_np_kd_val = np.load(f'./val_loss_student_{args.pair_keys}.npy')
 
 elif args.base == 'yes':
     accuracy_np = np.load('./train_accuracy_resnet18.npy')

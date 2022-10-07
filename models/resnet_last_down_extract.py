@@ -1,9 +1,13 @@
 import torch
 import torch.nn as nn
+from .eca_module import eca_layer
 
 __all__ = ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152']
 
-
+def conv3x3(in_planes, out_planes, stride=1):
+    """3x3 convolution with padding"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+                     padding=1, bias=False)
 class ResNet(nn.Module):
 
     def __init__(self, block, num_layer, num_classes=10, in_dim=3, base_dim=64):
@@ -14,8 +18,8 @@ class ResNet(nn.Module):
         modules0 = [ConvBN(in_dim, base_dim, kernel_size=3, padding=1)]
         #modules0 += [nn.MaxPool2d(kernel_size=3, stride=2, padding=1)]
 
-        if block is Basic:
-            modules0 += [Basic(base_dim, base_dim) for _ in range(num_layer[0])]
+        if block is ECABasicBlock:
+            modules0 += [ECABasicBlock(base_dim, base_dim) for _ in range(num_layer[0])]
 
             modules0 += [block(base_dim, base_dim * 2, down=True)]
             modules0 += [block(base_dim * 2, base_dim * 2) for _ in range(num_layer[1] - 1)]
@@ -80,29 +84,37 @@ class ResNet(nn.Module):
         return out_viewed, out
 
 
-class Basic(nn.Module):
-
-    def __init__(self, in_dim, out_dim, down=False):
-        super().__init__()
-        stride = 2 if down else 1
-
-        self.down = nn.Sequential(
-            nn.Conv2d(in_dim, out_dim, kernel_size=1, stride=stride, bias=False),
-            nn.BatchNorm2d(out_dim),
-        ) if down else None
-
-        self.layer = nn.Sequential(
-            ConvBN(in_dim, out_dim, kernel_size=3, padding=1, stride=stride),
-            nn.Conv2d(out_dim, out_dim, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(out_dim))
-
+class ECABasicBlock(nn.Module):
+    expansion = 1
+# self, in_dim, out_dim
+    def __init__(self, inplanes, planes, stride=1, down=False, k_size=3):
+        super(ECABasicBlock, self).__init__()
+        self.conv1 = conv3x3(inplanes, planes, stride)
+        self.bn1 = nn.BatchNorm2d(planes)
         self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(planes, planes, 1)
+        self.bn2 = nn.BatchNorm2d(planes)
+        self.eca = eca_layer(planes, k_size)
+        self.down = down
+        self.stride = stride
 
     def forward(self, x):
-        out = self.layer(x)
-        if self.down:
-            x = self.down(x)
-        return self.relu(out + x)
+        residual = x
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.eca(out)
+
+        if self.down is not None:
+            residual = self.down(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
 
 
 class Bottleneck(nn.Module):
@@ -213,11 +225,11 @@ class ConvBN(nn.Module):
 
 
 def resnet18(**kwargs):
-    return ResNet(Basic, num_layer=[2, 2, 2, 2], **kwargs)
+    return ResNet(ECABasicBlock, num_layer=[2, 2, 2, 2], **kwargs)
 
 
 def resnet34(**kwargs):
-    return ResNet(Basic, num_layer=[3, 4, 6, 3], **kwargs)
+    return ResNet(ECABasicBlock, num_layer=[3, 4, 6, 3], **kwargs)
 
 
 def resnet50(**kwargs):

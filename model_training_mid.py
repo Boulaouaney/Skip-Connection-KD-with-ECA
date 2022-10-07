@@ -16,7 +16,7 @@ torch.cuda.empty_cache()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch Cifar10 Training with KD')
-    parser.add_argument('--batch', default=256, type=int, help='batch size')
+    parser.add_argument('--batch', default=32, type=int, help='batch size')
     parser.add_argument('--shuffle', default=True, type=bool, help='shuffle the training dataset')
     parser.add_argument('--model', type=str, required=True, help='---Model type: resnet18, resnet34, resnet50---')
     parser.add_argument('--model_kd', type=str, required=True, help='---Model type: resnet18, resnet34, resnet50---')
@@ -237,11 +237,11 @@ if __name__ == '__main__':
     val_accuracy_np = np.asarray(val_accuracy)
     val_loss_np = np.asarray(val_loss)
 
-    np.save('./numpy_outputs/train_accuracy_teacher', train_accuracy_np)
-    np.save('./numpy_outputs/train_loss_teacher', train_loss_np)
+    np.save(f'./numpy_outputs/train_accuracy_teacher_{args.pair_keys}', train_accuracy_np)
+    np.save(f'./numpy_outputs/train_loss_teacher_{args.pair_keys}', train_loss_np)
 
-    np.save('./numpy_outputs/val_accuracy_teacher', val_accuracy_np)
-    np.save('./numpy_outputs/val_loss_teacher', val_loss_np)
+    np.save(f'./numpy_outputs/val_accuracy_teacher_{args.pair_keys}', val_accuracy_np)
+    np.save(f'./numpy_outputs/val_loss_teacher_{args.pair_keys}', val_loss_np)
 
     train_accuracy_np_kd = np.asarray(train_accuracy_kd)
     train_loss_np_kd = np.asarray(train_loss_kd)
@@ -249,8 +249,8 @@ if __name__ == '__main__':
     val_accuracy_np_kd = np.asarray(val_accuracy_kd)
     val_loss_np_kd = np.asarray(val_loss_kd)
 
-    np.save('./numpy_outputs/train_accuracy_student', train_accuracy_np_kd)
-    np.save('./numpy_outputs/train_loss_student', train_loss_np_kd)
+    np.save(f'./numpy_outputs/train_accuracy_student_{args.pair_keys}', train_accuracy_np_kd)
+    np.save(f'./numpy_outputs/train_loss_student_{args.pair_keys}', train_loss_np_kd)
 
-    np.save('./numpy_outputs/val_accuracy_student', val_accuracy_np_kd)
-    np.save('./numpy_outputs/val_loss_student', val_loss_np_kd)
+    np.save(f'./numpy_outputs/val_accuracy_student_{args.pair_keys}', val_accuracy_np_kd)
+    np.save(f'./numpy_outputs/val_loss_student_{args.pair_keys}', val_loss_np_kd)
