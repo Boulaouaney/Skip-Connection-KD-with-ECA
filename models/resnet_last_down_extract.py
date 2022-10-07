@@ -4,9 +4,9 @@ from .eca_module import eca_layer
 
 __all__ = ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152']
 
-def conv3x3(in_planes, out_planes, stride=1):
+def conv3x3(in_out_dim, out_out_dim, stride=1):
     """3x3 convolution with padding"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+    return nn.Conv2d(in_out_dim, out_out_dim, kernel_size=3, stride=stride,
                      padding=1, bias=False)
 class ResNet(nn.Module):
 
@@ -87,15 +87,18 @@ class ResNet(nn.Module):
 class ECABasicBlock(nn.Module):
     expansion = 1
 # self, in_dim, out_dim
-    def __init__(self, inplanes, planes, stride=1, down=False, k_size=3):
+    def __init__(self, in_dim, out_dim, stride=1, down=False, k_size=3):
         super(ECABasicBlock, self).__init__()
-        self.conv1 = conv3x3(inplanes, planes, stride)
-        self.bn1 = nn.BatchNorm2d(planes)
+        self.conv1 = conv3x3(in_dim, out_dim, stride)
+        self.bn1 = nn.BatchNorm2d(out_dim)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = conv3x3(planes, planes, 1)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.eca = eca_layer(planes, k_size)
-        self.down = down
+        self.conv2 = conv3x3(out_dim, out_dim, 1)
+        self.bn2 = nn.BatchNorm2d(out_dim)
+        self.eca = eca_layer(out_dim, k_size)
+        self.down = nn.Sequential(
+            nn.Conv2d(in_dim, out_dim, kernel_size=1, stride=stride, bias=False),
+            nn.BatchNorm2d(out_dim),
+        ) if down else None
         self.stride = stride
 
     def forward(self, x):
@@ -108,7 +111,7 @@ class ECABasicBlock(nn.Module):
         out = self.bn2(out)
         out = self.eca(out)
 
-        if self.down is not None:
+        if self.down:
             residual = self.down(x)
 
         out += residual
