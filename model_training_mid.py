@@ -10,6 +10,7 @@ import torch
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import sys
+
 torch.cuda.empty_cache()
 # torch.backends.cudnn.deterministic = True
 # torch.backends.cudnn.benchmark = False
@@ -22,14 +23,15 @@ if __name__ == '__main__':
     parser.add_argument('--model_kd', type=str, required=True, help='---Model type: resnet18, resnet34, resnet50---')
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=5e-4)
-    parser.add_argument('--pair_keys', type=int, required=True, help='---Indicate pair of keys unique for teacher and student---')
+    parser.add_argument('--pair_keys', type=int, required=True,
+                        help='---Indicate pair of keys unique for teacher and student---')
     parser.add_argument('--alpha', type=float, default=0.3, help='---Distillation weight (alpha) (default: 0.3)---')
     parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
     parser.add_argument('--epoch', default=300, type=int, help='epoch number')
     args, unparsed = parser.parse_known_args()
 
     device = 'cuda:0'
-        # if torch.cuda.is_available() else 'cpu'
+    # if torch.cuda.is_available() else 'cpu'
 
     model_names = ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152']
     best_acc = 0
@@ -67,6 +69,7 @@ if __name__ == '__main__':
             return resnet_down.__dict__[model_names[3]]()
         elif args.model_kd == 'resnet152':
             return resnet_down.__dict__[model_names[4]]()
+
 
     print('Teacher model type: ', args.model)
     print('Student model type: ', args.model_kd)
@@ -182,6 +185,7 @@ if __name__ == '__main__':
 
 
     models_teacher = build_model().to(device)
+    # models_teacher.load_state_dict(torch.load(f'./vanilla_kd_model_saved_base/{args.model}_teacher.pth'))
     distil_models = build_model_kd().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer_teacher = optim.SGD(models_teacher.parameters(), lr=args.lr,
@@ -213,6 +217,19 @@ if __name__ == '__main__':
             torch.save(models_teacher.state_dict(), f'./vanilla_kd_model_saved_base/{args.model}_teacher.pth')
     print('\n')
 
+    print("Saving Teacher Numpy Outputs... =====>")
+    train_accuracy_np = np.asarray(train_accuracy)
+    train_loss_np = np.asarray(train_loss)
+
+    val_accuracy_np = np.asarray(val_accuracy)
+    val_loss_np = np.asarray(val_loss)
+
+    np.save(f'./numpy_outputs/train_accuracy_teacher_{args.pair_keys}', train_accuracy_np)
+    np.save(f'./numpy_outputs/train_loss_teacher_{args.pair_keys}', train_loss_np)
+
+    np.save(f'./numpy_outputs/val_accuracy_teacher_{args.pair_keys}', val_accuracy_np)
+    np.save(f'./numpy_outputs/val_loss_teacher_{args.pair_keys}', val_loss_np)
+
     print("Training Student second... =====>")
     for epoch in range(args.epoch):
         print('\nStudent Epoch: %d' % epoch)
@@ -231,18 +248,7 @@ if __name__ == '__main__':
             best_loss_kd = validating_loss_kd
             torch.save(distil_models.state_dict(), f'./vanilla_kd_model_saved_base/{args.model}_student.pth')
 
-    train_accuracy_np = np.asarray(train_accuracy)
-    train_loss_np = np.asarray(train_loss)
-
-    val_accuracy_np = np.asarray(val_accuracy)
-    val_loss_np = np.asarray(val_loss)
-
-    np.save(f'./numpy_outputs/train_accuracy_teacher_{args.pair_keys}', train_accuracy_np)
-    np.save(f'./numpy_outputs/train_loss_teacher_{args.pair_keys}', train_loss_np)
-
-    np.save(f'./numpy_outputs/val_accuracy_teacher_{args.pair_keys}', val_accuracy_np)
-    np.save(f'./numpy_outputs/val_loss_teacher_{args.pair_keys}', val_loss_np)
-
+    print("Saving Teacher Numpy Outputs... =====>")
     train_accuracy_np_kd = np.asarray(train_accuracy_kd)
     train_loss_np_kd = np.asarray(train_loss_kd)
 
