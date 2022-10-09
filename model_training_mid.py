@@ -26,7 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('--pair_keys', type=int, required=True,
                         help='---Indicate pair of keys unique for teacher and student---')
     parser.add_argument('--alpha', type=float, default=0.3, help='---Distillation weight (alpha) (default: 0.3)---')
-    parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
+    parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
     parser.add_argument('--epoch', default=300, type=int, help='epoch number')
     args, unparsed = parser.parse_known_args()
 
