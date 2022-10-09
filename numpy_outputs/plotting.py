@@ -4,8 +4,8 @@ import argparse
 parser = argparse.ArgumentParser(description='Plot teacher and student models accuracy and loss graph')
 parser.add_argument('--plot_type', type=str, required=True, help='---Plot type: accuracy or loss')
 parser.add_argument('--base', type=str, required=True)
-# parser.add_argument('--pair_keys', type=int, required=True, help='---Indicate pair of keys unique for teacher and student---')
-parser.add_argument('--pair_keys', type=int, help='---Indicate pair of keys unique for teacher and student---')
+parser.add_argument('--pair_keys', type=int, required=True, help='---Indicate pair of keys unique for teacher and student---')
+# parser.add_argument('--pair_keys', type=int, help='---Indicate pair of keys unique for teacher and student---')
 args, unparsed = parser.parse_known_args()
 
 if args.base == 'no':
