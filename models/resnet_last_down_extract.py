@@ -18,8 +18,8 @@ class ResNet(nn.Module):
         modules0 = [ConvBN(in_dim, base_dim, kernel_size=3, padding=1)]
         #modules0 += [nn.MaxPool2d(kernel_size=3, stride=2, padding=1)]
 
-        if block is ECABasicBlock:
-            modules0 += [ECABasicBlock(base_dim, base_dim) for _ in range(num_layer[0])]
+        if block is Basic:
+            modules0 += [Basic(base_dim, base_dim) for _ in range(num_layer[0])]
 
             modules0 += [block(base_dim, base_dim * 2, down=True)]
             modules0 += [block(base_dim * 2, base_dim * 2) for _ in range(num_layer[1] - 1)]
@@ -28,7 +28,7 @@ class ResNet(nn.Module):
 
             modules0 += [block(base_dim * 4, base_dim * 4) for _ in range(num_layer[2] - 1)]
 
-            modules_for_export += [Exportable_base(base_dim * 4, base_dim * 8, down=True)]
+            modules_for_export += [ECABasicBlock(base_dim * 4, base_dim * 8, down=True)]
             modules1 += [block(base_dim * 8, base_dim * 8) for _ in range(num_layer[3] - 1)]
 
             last_features = base_dim * 8
@@ -84,6 +84,30 @@ class ResNet(nn.Module):
         return out_viewed, out
 
 
+class Basic(nn.Module):
+
+    def __init__(self, in_dim, out_dim, down=False):
+        super().__init__()
+        stride = 2 if down else 1
+
+        self.down = nn.Sequential(
+            nn.Conv2d(in_dim, out_dim, kernel_size=1, stride=stride, bias=False),
+            nn.BatchNorm2d(out_dim),
+        ) if down else None
+
+        self.layer = nn.Sequential(
+            ConvBN(in_dim, out_dim, kernel_size=3, padding=1, stride=stride),
+            nn.Conv2d(out_dim, out_dim, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_dim))
+
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        out = self.layer(x)
+        if self.down:
+            x = self.down(x)
+        return self.relu(out + x)
+
 class ECABasicBlock(nn.Module):
     expansion = 1
 # self, in_dim, out_dim
@@ -117,7 +141,7 @@ class ECABasicBlock(nn.Module):
         out += residual
         out = self.relu(out)
 
-        return out
+        return out, residual
 
 
 class Bottleneck(nn.Module):
@@ -153,30 +177,30 @@ class Bottleneck(nn.Module):
         return self.relu(out + x)
 
 
-class Exportable_base(nn.Module):
-
-    def __init__(self, in_dim, out_dim, down=False):
-        super().__init__()
-        stride = 2 if down else 1
-
-        self.down = nn.Sequential(
-            nn.Conv2d(in_dim, out_dim, kernel_size=1, stride=stride, bias=False),
-            nn.BatchNorm2d(out_dim),
-        ) if down else None
-
-        self.layer = nn.Sequential(
-            ConvBN(in_dim, out_dim, kernel_size=3, padding=1, stride=stride),
-            nn.Conv2d(out_dim, out_dim, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(out_dim))
-
-        self.relu = nn.ReLU(inplace=True)
-
-    def forward(self, x):
-        out = self.layer(x)
-        if self.down:
-            x = self.down(x)
-        output = self.relu(out + x)
-        return output, x
+# class Exportable_base(nn.Module):
+#
+#     def __init__(self, in_dim, out_dim, down=False):
+#         super().__init__()
+#         stride = 2 if down else 1
+#
+#         self.down = nn.Sequential(
+#             nn.Conv2d(in_dim, out_dim, kernel_size=1, stride=stride, bias=False),
+#             nn.BatchNorm2d(out_dim),
+#         ) if down else None
+#
+#         self.layer = nn.Sequential(
+#             ConvBN(in_dim, out_dim, kernel_size=3, padding=1, stride=stride),
+#             nn.Conv2d(out_dim, out_dim, kernel_size=3, padding=1, bias=False),
+#             nn.BatchNorm2d(out_dim))
+#
+#         self.relu = nn.ReLU(inplace=True)
+#
+#     def forward(self, x):
+#         out = self.layer(x)
+#         if self.down:
+#             x = self.down(x)
+#         output = self.relu(out + x)
+#         return output, x
 
 
 class Exportable_bottleneck(nn.Module):
@@ -228,11 +252,11 @@ class ConvBN(nn.Module):
 
 
 def resnet18(**kwargs):
-    return ResNet(ECABasicBlock, num_layer=[2, 2, 2, 2], **kwargs)
+    return ResNet(Basic, num_layer=[2, 2, 2, 2], **kwargs)
 
 
 def resnet34(**kwargs):
-    return ResNet(ECABasicBlock, num_layer=[3, 4, 6, 3], **kwargs)
+    return ResNet(Basic, num_layer=[3, 4, 6, 3], **kwargs)
 
 
 def resnet50(**kwargs):
