@@ -2,13 +2,19 @@ import io
 import numpy as np 
 
 from torch import nn
+import argparse
 import torch.onnx
 import models.resnet_last_down_extract as resnet_down
+
+parser = argparse.ArgumentParser(description='PyTorch Cifar10 Training with KD')
+parser.add_argument('--pair_keys', type=int, required=True,
+                    help='---Indicate pair of keys unique for teacher and student---')
+args, unparsed = parser.parse_known_args()
 model_names = ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152']
 
 torch_model = resnet_down.__dict__[model_names[0]]()
 
-model_path = 'C:/Users/82109/Desktop/Projects/Thesis/ResNet-Skip-Connection-KD/vanilla_kd_model_saved_base/resnet18_student.pth'
+model_path = f'./vanilla_kd_model_saved_base/resnet18_student_{args.pair_keys}.pth'
 batch_size = 1
 
 map_location = lambda storage, loc: storage
@@ -26,7 +32,7 @@ torch_out = torch_model(x)
 
 torch.onnx.export(torch_model,
                   x,
-                  "Student_model.onnx",
+                  f"./vanilla_kd_ECA_ONNX_model/Student_model_{args.pair_keys}.onnx",
                   export_params=True,
                   opset_version=10,
                   do_constant_folding=True,

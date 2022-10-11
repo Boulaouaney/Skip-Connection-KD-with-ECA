@@ -26,7 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('--pair_keys', type=int, required=True,
                         help='---Indicate pair of keys unique for teacher and student---')
     parser.add_argument('--alpha', type=float, default=0.3, help='---Distillation weight (alpha) (default: 0.3)---')
-    parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
+    parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
     parser.add_argument('--epoch', default=300, type=int, help='epoch number')
     args, unparsed = parser.parse_known_args()
 
@@ -214,7 +214,7 @@ if __name__ == '__main__':
         torch.cuda.empty_cache()
         if epoch >= 0 and (validating_loss - best_loss) < 0:
             best_loss = validating_loss
-            torch.save(models_teacher.state_dict(), f'./vanilla_kd_model_saved_base/{args.model}_teacher.pth')
+            torch.save(models_teacher.state_dict(), f'./vanilla_kd_model_saved_base/{args.model}_teacher_{args.pair_keys}.pth')
     print('\n')
 
     print("Saving Teacher Numpy Outputs... =====>")
@@ -246,7 +246,7 @@ if __name__ == '__main__':
         torch.cuda.empty_cache()
         if epoch >= 0 and (validating_loss_kd - best_loss_kd) < 0:
             best_loss_kd = validating_loss_kd
-            torch.save(distil_models.state_dict(), f'./vanilla_kd_model_saved_base/{args.model}_student.pth')
+            torch.save(distil_models.state_dict(), f'./vanilla_kd_model_saved_base/{args.model}_student_{args.pair_keys}.pth')
 
     print("Saving Teacher Numpy Outputs... =====>")
     train_accuracy_np_kd = np.asarray(train_accuracy_kd)
