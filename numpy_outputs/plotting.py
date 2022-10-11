@@ -17,11 +17,22 @@ if args.base == 'no':
     accuracy_np_val = accuracy_np_val/10000.0
     accuracy_np_kd = accuracy_np_kd/50000.0
     accuracy_np_kd_val = accuracy_np_kd_val/10000.0
+    # print(np.amax(accuracy_np))
+
+    maxTrainAcc_teacher = np.amax(accuracy_np)
+    maxValAcc_teacher = np.amax(accuracy_np_val)
+    maxTrainAcc_student = np.amax(accuracy_np_kd)
+    maxValAcc_student = np.amax(accuracy_np_kd_val)
 
     loss_np = np.load(f'./train_loss_teacher_{args.pair_keys}.npy')
     loss_np_val = np.load(f'./val_loss_teacher_{args.pair_keys}.npy')
     loss_np_kd = np.load(f'./train_loss_student_{args.pair_keys}.npy')
     loss_np_kd_val = np.load(f'./val_loss_student_{args.pair_keys}.npy')
+
+    minTrainLoss_teacher = np.amin(loss_np)/100
+    minValLoss_teacher = np.amin(loss_np_val)/100
+    minTrainLoss_student = np.amin(loss_np_kd)/100
+    minValLoss_student = np.amin(loss_np_kd_val)/100
 
 elif args.base == 'yes':
     accuracy_np = np.load('./train_accuracy_resnet18.npy')
@@ -36,37 +47,40 @@ elif args.base == 'yes':
 #print(accuracy_np_val)
 if args.plot_type == 'accuracy':
     plt.figure(figsize=(10, 5))
-    plt.title("Teacher: Training and Validation Accuracy")
+    plt.title(f"Teacher: Training and Validation Accuracy\n max training Acc={maxTrainAcc_teacher}, max validation acc= {maxValAcc_teacher}")
     plt.plot(accuracy_np, 'g', label='Training Accuracy')
     plt.plot(accuracy_np_val, 'b', label='Validation Accuracy')
-    plt.xlabel('Iterations')
+    plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
     plt.legend()
     plt.show()
 
     plt.figure(figsize=(10, 5))
-    plt.title("Student: Training and Validation Accuracy")
+    plt.title(
+        f"Student: Training and Validation Accuracy\n max training Acc={maxTrainAcc_student}, max validation acc= {maxValAcc_student}")
     plt.plot(accuracy_np_kd, 'g', label='Training Accuracy')
     plt.plot(accuracy_np_kd_val, 'b', label='Validation Accuracy')
-    plt.xlabel('Iterations')
+    plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
     plt.legend()
     plt.show()
 elif args.plot_type == 'loss':
     plt.figure(figsize=(10, 5))
-    plt.title("Teacher: Training and Validation Loss")
+    plt.title(
+        f"Teacher: Training and Validation Loss\n min training loss={minTrainLoss_teacher}, min validation loss= {minValLoss_teacher}")
     plt.plot(loss_np, 'g', label='Training Loss')
     plt.plot(loss_np_val, 'b', label='Validation Loss')
-    plt.xlabel('Iterations')
+    plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
     plt.show()
 
     plt.figure(figsize=(10, 5))
-    plt.title("Student: Training and Validation Loss")
+    plt.title(
+        f"Student: Training and Validation Loss\n min training loss={minTrainLoss_student}, min validation loss= {minValLoss_student}")
     plt.plot(loss_np_kd, 'g', label='Training Loss')
     plt.plot(loss_np_kd_val, 'b', label='Validation Loss')
-    plt.xlabel('Iterations')
+    plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
     plt.show()
