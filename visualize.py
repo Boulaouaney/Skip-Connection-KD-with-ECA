@@ -1,10 +1,14 @@
 import io
 import numpy as np
+import torchvision
+import torchvision.transforms as transforms
 
 from torch import nn
 #from torchviz import make_dot
 import argparse
 import torch.onnx
+from torch.utils.data import DataLoader
+
 import models.resnet_last_down_extract as resnet_down
 import hiddenlayer as hl
 
@@ -14,6 +18,18 @@ parser.add_argument('--pair_keys', type=int, required=True,
 parser.add_argument('--model', type=str, required=True, help='---Model type: resnet18, resnet34, resnet50---')
 args, unparsed = parser.parse_known_args()
 model_names = ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152']
+
+transform_train = transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomVerticalFlip(),
+        transforms.ToTensor()])
+
+trainset = torchvision.datasets.CIFAR10(
+        root='./cifar10', train=True, download=True, transform=transform_train)
+
+trainLoader = DataLoader(
+    trainset, batch_size=args.batch, shuffle=args.shuffle, num_workers=2)
 
 def build_model():
     if args.model == 'resnet18':
@@ -34,26 +50,25 @@ torch_model = build_model().to(device)
 model_path = f'./vanilla_kd_model_saved_base/{args.model}_student_{args.pair_keys}.pth'
 batch_size = 1
 
-map_location = lambda storage, loc: storage
-if torch.cuda.is_available():
-    map_location = None
+# map_location = lambda storage, loc: storage
+# if torch.cuda.is_available():
+#     map_location = None
 
-state_dict = torch.load(model_path, map_location = map_location)
+state_dict = torch.load(model_path, map_location = None)
 torch_model.load_state_dict(state_dict)
 
 torch_model.eval()
 
 
+batch = next(iter(trainLoader))
 
-x = torch.randn(batch_size, 3, 32, 32).to(device)
+batch = batch.to(device)
+torch_out = torch_model(batch.text)
 
-torch_out = torch_model(x)
-
-torch_out = torch_out
 # make_dot(torch_out, params=dict(torch_model.named_parameters())).render("cnn_torchviz2", format="png")
 
 transforms = [hl.transforms.Prune('Constant')]
 
-graph = hl.build_graph(torch_model, x, transforms=transforms)
+graph = hl.build_graph(torch_model, batch.text, transforms=transforms)
 graph.theme = hl.graph.THEMES['blue'].copy()
 graph.save('cnn_hiddenlayer', format='png')
