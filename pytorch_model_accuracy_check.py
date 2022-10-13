@@ -133,7 +133,7 @@ if __name__ == '__main__':
                 total = 0
 
                 for batch_idx, (data, target) in enumerate(testLoader):
-                    data, target = data.to(device, target.to(device))
+                    data, target = data.to(device), target.to(device)
 
                     output_1, output = net(data)
                     loss = criterion(output, target)
