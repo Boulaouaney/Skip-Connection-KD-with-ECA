@@ -4,8 +4,8 @@ import torchvision
 import torchvision.transforms as transforms
 import argparse
 from progress_bar import progress_bar
-import models.resnet_teacher as teacher
-import models.resnet_student as student
+import models.resnet_ECA_parallel_SC as teacher
+import models.resnet_ECA_parallel_SC as student
 import torch.nn.functional as F
 import torch
 from torch.utils.data import DataLoader
@@ -19,7 +19,7 @@ torch.cuda.empty_cache()
 
 
 parser = argparse.ArgumentParser(description='PyTorch Cifar10 Training with KD')
-parser.add_argument('--batch', default=256, type=int, help='batch size')
+parser.add_argument('--batch', default=64, type=int, help='batch size')
 parser.add_argument('--shuffle', default=True, type=bool, help='shuffle the training dataset')
 parser.add_argument('--model', type=str, required=True, help='---Model type: resnet18, resnet34, resnet50---')
 parser.add_argument('--model_kd', type=str, required=True, help='---Model type: resnet18, resnet34, resnet50---')
@@ -27,12 +27,12 @@ parser.add_argument('--momentum', type=float, default=0.9)
 parser.add_argument('--weight_decay', type=float, default=5e-4)
 parser.add_argument('--pair_keys', type=int, required=True, help='---Indicate pair of keys unique for teacher and student---')
 parser.add_argument('--alpha', type=float, default=0.3, help='---Distillation weight (alpha) (default: 0.3)---')
-parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
+parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
 parser.add_argument('--epoch', default=300, type=int, help='epoch number')
 parser.add_argument('--impact', default=0.01, type=float, help='alpha value')
 args, unparsed = parser.parse_known_args()
 
-device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
+device = 'cuda:0'
 
 
 model_names = ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152']
@@ -107,40 +107,36 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer',
 print('==> Building model..')
 
 
-
-def train_distil(model, distil_model, loader, optimizer, distil_weights, impact):
+def train_distil(model, distil_model, loader, optimizer, distil_weights):
     model.eval()
     distil_model.train()
 
     train_loss_kd = 0
     correct_kd = 0
     total_kd = 0
-    output_array_teacher = []
+
     for batch_idx, (data, target) in enumerate(loader):
         data, target = data.to(device), target.to(device)
 
         optimizer.zero_grad()
-        output1_t, output_t, output_array_t = model(data)
-        output_array_t = output_array_t.detach()
-        output1_s, output_s, output_array_s = distil_model(data, output_array_t, state_training, impact)
+        output1_t, output_t = model(data)
+        output1_s, output_s = distil_model(data)
         kd_loss = F.mse_loss(output1_s, output1_t.detach()) * distil_weights
         kd_loss_cls = criterion(output_s, target)
         loss_kd = kd_loss + kd_loss_cls
-        #loss_kd = criterion(output_s, target)
         loss_kd.backward()
         optimizer.step()
-        output_array_teacher.append(output_array_t)
+
         train_loss_kd += loss_kd.item()
         _, predicted = output_s.max(1)
         total_kd += target.size(0)
         correct_kd += predicted.eq(target).sum().item()
         progress_bar(batch_idx, len(trainLoader), 'Student: Loss: %.3f | Acc: %.3f%% (%d/%d)'
                      % (train_loss_kd / (batch_idx + 1), 100. * correct_kd / total_kd, correct_kd, total_kd))
-    return correct_kd, train_loss_kd, output_array_teacher
+    return correct_kd, train_loss_kd
 
 
-
-def validate_student(model, loader, output_array):
+def validate(model, loader):
     model.eval()
 
     val_loss = 0
@@ -151,7 +147,7 @@ def validate_student(model, loader, output_array):
         for batch_idx, (data, target) in enumerate(loader):
             data, target = data.to(device), target.to(device)
 
-            output_1, output, array = model(data, output_array, state=False, impact=0)
+            output_1, output = model(data)
             loss = criterion(output, target)
 
             val_loss += loss.item()
@@ -185,11 +181,10 @@ best_loss_kd = sys.maxsize
 
 print("Training Student second... =====>")
 for epoch in range(args.epoch):
-    print('\nStudent Epoch: %d' % (epoch+1))
-
-    train_correct_kd, training_loss_kd, output_array_t = train_distil(models_teacher, distil_models, trainLoader, optimizer_student,
-                                                      distil_weight, impact)
-    val_correct_kd, validating_loss_kd = validate_student(distil_models, testLoader, output_array=output_array_t)
+    print('\nStudent Epoch: %d' % epoch)
+    train_correct_kd, training_loss_kd = train_distil(models_teacher, distil_models, trainLoader, optimizer_student,
+                                                      distil_weight)
+    val_correct_kd, validating_loss_kd = validate(distil_models, testLoader)
     scheduler_student.step()
 
     train_accuracy_kd.append(train_correct_kd)
@@ -200,8 +195,8 @@ for epoch in range(args.epoch):
     torch.cuda.empty_cache()
     if epoch >= 0 and (validating_loss_kd - best_loss_kd) < 0:
         best_loss_kd = validating_loss_kd
-        torch.save(distil_models.state_dict(), f'./vanilla_kd_model_saved_base/{args.model_kd}_student_{args.pair_keys}.pth')
-
+        torch.save(distil_models.state_dict(),
+                   f'./vanilla_kd_model_saved_base/{args.model}_student_{args.pair_keys}.pth')
 
 train_accuracy_np_kd = np.asarray(train_accuracy_kd)
 train_loss_np_kd = np.asarray(train_loss_kd)
