@@ -138,7 +138,7 @@ if __name__ == '__main__':
         elif args.ECA_block == 'last':
             net = build_model_ECA_last().to(device)
             net.eval()
-
+            print(net)
             summary(net, (3, 32, 32))
             net.load_state_dict(torch.load(f'./vanilla_kd_model_saved_base/{args.model}_{args.type}_{args.pair_keys}.pth',
                                            map_location=torch.device('cuda:0')))
