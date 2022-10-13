@@ -111,6 +111,7 @@ if __name__ == '__main__':
     elif args.ECA == 'yes':
         if args.ECA_block == 'parallel':
             net = build_model_ECA_parallel().to(device)
+            net.eval()
 
             summary(net, (3, 32, 32))
             net.load_state_dict(torch.load(f'./vanilla_kd_model_saved_base/{args.model}_{args.type}_{args.pair_keys}.pth',
@@ -136,6 +137,7 @@ if __name__ == '__main__':
                                  % (val_loss / (batch_idx + 1), 100. * correct / total, correct, total))
         elif args.ECA_block == 'last':
             net = build_model_ECA_last().to(device)
+            net.eval()
 
             summary(net, (3, 32, 32))
             net.load_state_dict(torch.load(f'./vanilla_kd_model_saved_base/{args.model}_{args.type}_{args.pair_keys}.pth',
