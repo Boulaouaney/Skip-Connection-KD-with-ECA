@@ -19,7 +19,7 @@ if __name__ == '__main__':
     parser.add_argument('--model', type=str, required=True, help='---Model type: resnet18, resnet34, resnet50---')
     parser.add_argument('--pair_keys', type=int, required=True,
                         help='---Indicate pair of keys unique for teacher and student---')
-    parser.add_argument('--type', type=str, default='base', help='---Choose the model either teacher or student---')
+    parser.add_argument('--type', type=str, default='student', help='---Choose the model either teacher or student---')
     parser.add_argument('--ECA', type=str, default='yes', help='---model with ECA or without')
     parser.add_argument('--ECA_block', type=str, default='parallel', help='---ECA block in parallel or last')
     args, unparsed = parser.parse_known_args()
