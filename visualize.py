@@ -29,7 +29,7 @@ trainset = torchvision.datasets.CIFAR10(
         root='./cifar10', train=True, download=True, transform=transform_train)
 
 trainLoader = DataLoader(
-    trainset, batch_size=args.batch, shuffle=args.shuffle, num_workers=2)
+    trainset, batch_size=32, shuffle=True, num_workers=2)
 
 def build_model():
     if args.model == 'resnet18':
