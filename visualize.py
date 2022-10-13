@@ -27,7 +27,9 @@ def build_model():
     elif args.model == 'resnet152':
         return resnet_down.__dict__[model_names[4]]()
 
-torch_model = build_model().to("cuda")
+device = 'cuda:0'
+
+torch_model = build_model().to(device)
 
 model_path = f'./vanilla_kd_model_saved_base/{args.model}_student_{args.pair_keys}.pth'
 batch_size = 1
@@ -41,10 +43,13 @@ torch_model.load_state_dict(state_dict)
 
 torch_model.eval()
 
+
+
 x = torch.randn(batch_size, 3, 32, 32)
 
 torch_out = torch_model(x)
 
+x, torch_out = x.to(device), torch_out.to(device)
 # make_dot(torch_out, params=dict(torch_model.named_parameters())).render("cnn_torchviz2", format="png")
 
 transforms = [hl.transforms.Prune('Constant')]
