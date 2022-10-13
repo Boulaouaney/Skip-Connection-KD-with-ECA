@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from .eca_module import eca_layer
 
 __all__ = ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152']
 
@@ -12,10 +13,10 @@ class ResNet(nn.Module):
         modules_for_export = []
         modules1 = []
         modules0 = [ConvBN(in_dim, base_dim, kernel_size=3, padding=1)]
-        #modules0 += [nn.MaxPool2d(kernel_size=3, stride=2, padding=1)]
+        # modules0 += [nn.MaxPool2d(kernel_size=3, stride=2, padding=1)]
 
         if block is Basic:
-            modules0 += [Basic(base_dim, base_dim) for _ in range(num_layer[0])]
+            modules0 += [block(base_dim, base_dim, eca=True) for _ in range(num_layer[0])]
 
             modules0 += [block(base_dim, base_dim * 2, down=True)]
             modules0 += [block(base_dim * 2, base_dim * 2) for _ in range(num_layer[1] - 1)]
@@ -74,7 +75,7 @@ class ResNet(nn.Module):
         out3 = out2.view(batch_size, -1)
         out = self.fc_layer(out3)
 
-        #outputting mid data
+        # outputting mid data
         out_viewed = out_export[1].view(batch_size, -1)
 
         return out_viewed, out
@@ -82,7 +83,7 @@ class ResNet(nn.Module):
 
 class Basic(nn.Module):
 
-    def __init__(self, in_dim, out_dim, down=False):
+    def __init__(self, in_dim, out_dim, down=False, eca=False):
         super().__init__()
         stride = 2 if down else 1
 
@@ -98,10 +99,21 @@ class Basic(nn.Module):
 
         self.relu = nn.ReLU(inplace=True)
 
+        # ECA IN PARALLELS
+        self.eca_pool = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1)) if eca else None
+        self.eca_conv = nn.Sequential(
+            nn.Conv1d(1, 1, kernel_size=3, padding=(3 - 1) // 2, bias=False)) if eca else None
+
     def forward(self, x):
         out = self.layer(x)
         if self.down:
             x = self.down(x)
+        if self.eca_pool and self.eca_conv:
+            eca_out = self.eca_pool(x)
+            eca_out = self.eca_conv(eca_out.squeeze(-1).transpose(-1, -2)).transpose(-1, -2).unsqueeze(-1)
+            eca_out = torch.sigmoid(eca_out)
+            x = x + eca_out.expand_as(x)
         return self.relu(out + x)
 
 

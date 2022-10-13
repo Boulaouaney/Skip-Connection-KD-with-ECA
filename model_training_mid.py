@@ -4,7 +4,7 @@ import torchvision
 import torchvision.transforms as transforms
 import argparse
 from progress_bar import progress_bar
-import models.resnet_last_down_extract as resnet_down
+import models.resnet_ECA_parallel_SC as resnet_down
 import torch.nn.functional as F
 import torch
 from torch.utils.data import DataLoader

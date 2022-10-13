@@ -1,9 +1,13 @@
 import torch
 import torch.nn as nn
+from .eca_module import eca_layer
 
 __all__ = ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152']
 
-
+def conv3x3(in_out_dim, out_out_dim, stride=1):
+    """3x3 convolution with padding"""
+    return nn.Conv2d(in_out_dim, out_out_dim, kernel_size=3, stride=stride,
+                     padding=1, bias=False)
 class ResNet(nn.Module):
 
     def __init__(self, block, num_layer, num_classes=10, in_dim=3, base_dim=64):
@@ -24,7 +28,7 @@ class ResNet(nn.Module):
 
             modules0 += [block(base_dim * 4, base_dim * 4) for _ in range(num_layer[2] - 1)]
 
-            modules_for_export += [Exportable_base(base_dim * 4, base_dim * 8, down=True)]
+            modules_for_export += [ECABasicBlock(base_dim * 4, base_dim * 8, down=True)]
             modules1 += [block(base_dim * 8, base_dim * 8) for _ in range(num_layer[3] - 1)]
 
             last_features = base_dim * 8
@@ -104,6 +108,41 @@ class Basic(nn.Module):
             x = self.down(x)
         return self.relu(out + x)
 
+class ECABasicBlock(nn.Module):
+    expansion = 1
+# self, in_dim, out_dim
+    def __init__(self, in_dim, out_dim, stride=1, down=False, k_size=3):
+        super(ECABasicBlock, self).__init__()
+        self.conv1 = conv3x3(in_dim, out_dim, stride)
+        self.bn1 = nn.BatchNorm2d(out_dim)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(out_dim, out_dim, 1)
+        self.bn2 = nn.BatchNorm2d(out_dim)
+        self.eca = eca_layer(out_dim, k_size)
+        self.down = nn.Sequential(
+            nn.Conv2d(in_dim, out_dim, kernel_size=1, stride=stride, bias=False),
+            nn.BatchNorm2d(out_dim),
+        ) if down else None
+        self.stride = stride
+
+    def forward(self, x):
+        residual = x
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.eca(out)
+
+        if self.down:
+            residual = self.down(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out, residual
+
 
 class Bottleneck(nn.Module):
 
@@ -138,30 +177,30 @@ class Bottleneck(nn.Module):
         return self.relu(out + x)
 
 
-class Exportable_base(nn.Module):
-
-    def __init__(self, in_dim, out_dim, down=False):
-        super().__init__()
-        stride = 2 if down else 1
-
-        self.down = nn.Sequential(
-            nn.Conv2d(in_dim, out_dim, kernel_size=1, stride=stride, bias=False),
-            nn.BatchNorm2d(out_dim),
-        ) if down else None
-
-        self.layer = nn.Sequential(
-            ConvBN(in_dim, out_dim, kernel_size=3, padding=1, stride=stride),
-            nn.Conv2d(out_dim, out_dim, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(out_dim))
-
-        self.relu = nn.ReLU(inplace=True)
-
-    def forward(self, x):
-        out = self.layer(x)
-        if self.down:
-            x = self.down(x)
-        output = self.relu(out + x)
-        return output, x
+# class Exportable_base(nn.Module):
+#
+#     def __init__(self, in_dim, out_dim, down=False):
+#         super().__init__()
+#         stride = 2 if down else 1
+#
+#         self.down = nn.Sequential(
+#             nn.Conv2d(in_dim, out_dim, kernel_size=1, stride=stride, bias=False),
+#             nn.BatchNorm2d(out_dim),
+#         ) if down else None
+#
+#         self.layer = nn.Sequential(
+#             ConvBN(in_dim, out_dim, kernel_size=3, padding=1, stride=stride),
+#             nn.Conv2d(out_dim, out_dim, kernel_size=3, padding=1, bias=False),
+#             nn.BatchNorm2d(out_dim))
+#
+#         self.relu = nn.ReLU(inplace=True)
+#
+#     def forward(self, x):
+#         out = self.layer(x)
+#         if self.down:
+#             x = self.down(x)
+#         output = self.relu(out + x)
+#         return output, x
 
 
 class Exportable_bottleneck(nn.Module):

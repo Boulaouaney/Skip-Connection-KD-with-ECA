@@ -4,7 +4,7 @@ import numpy as np
 from torch import nn
 import argparse
 import torch.onnx
-import models.resnet_last_down_extract as resnet_down
+import models.resnet_ECA_parallel_SC as resnet_down
 
 parser = argparse.ArgumentParser(description='PyTorch Cifar10 Training with KD')
 parser.add_argument('--pair_keys', type=int, required=True,
