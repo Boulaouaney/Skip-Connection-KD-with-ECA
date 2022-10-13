@@ -2,7 +2,7 @@ import io
 import numpy as np
 
 from torch import nn
-from torchviz import make_dot
+#from torchviz import make_dot
 import argparse
 import torch.onnx
 import models.resnet_last_down_extract as resnet_down
@@ -45,11 +45,11 @@ torch_model.eval()
 
 
 
-x = torch.randn(batch_size, 3, 32, 32)
+x = torch.randn(batch_size, 3, 32, 32).to(device)
 
 torch_out = torch_model(x)
 
-x, torch_out = x.to(device), torch_out.to(device)
+torch_out = torch_out
 # make_dot(torch_out, params=dict(torch_model.named_parameters())).render("cnn_torchviz2", format="png")
 
 transforms = [hl.transforms.Prune('Constant')]
