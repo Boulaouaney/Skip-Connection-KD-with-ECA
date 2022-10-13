@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
     model_names = ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152']
     #device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
-
+    device = 'cuda:0'
 
     def build_model_base():
         if args.model == 'resnet18':
@@ -121,7 +121,7 @@ if __name__ == '__main__':
                     progress_bar(batch_idx, len(testLoader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
                                  % (val_loss / (batch_idx + 1), 100. * correct / total, correct, total))
         elif args.type == 'student':
-            net = build_model_kd_st()  # .to(device)
+            net = build_model_kd_st().to(device)
 
             summary(net, (3, 32, 32))
             net.load_state_dict(torch.load(f'./vanilla_kd_model_saved_base/{args.model}_{args.type}_{args.pair_keys}.pth',
@@ -133,6 +133,7 @@ if __name__ == '__main__':
                 total = 0
 
                 for batch_idx, (data, target) in enumerate(testLoader):
+                    data, target = data.to(device, target.to(device))
 
                     output_1, output = net(data)
                     loss = criterion(output, target)
