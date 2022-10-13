@@ -1,13 +1,7 @@
-import io
-import numpy as np
-import torchvision
-import torchvision.transforms as transforms
 
-from torch import nn
-#from torchviz import make_dot
+from torchviz import make_dot
 import argparse
 import torch.onnx
-from torch.utils.data import DataLoader
 
 import models.resnet_last_down_extract as resnet_down
 import hiddenlayer as hl
@@ -19,17 +13,6 @@ parser.add_argument('--model', type=str, required=True, help='---Model type: res
 args, unparsed = parser.parse_known_args()
 model_names = ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152']
 
-transform_train = transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomVerticalFlip(),
-        transforms.ToTensor()])
-
-trainset = torchvision.datasets.CIFAR10(
-        root='./cifar10', train=True, download=True, transform=transform_train)
-
-trainLoader = DataLoader(
-    trainset, batch_size=32, shuffle=True, num_workers=0)
 
 def build_model():
     if args.model == 'resnet18':
@@ -43,32 +26,25 @@ def build_model():
     elif args.model == 'resnet152':
         return resnet_down.__dict__[model_names[4]]()
 
-device = 'cuda:0'
 
-torch_model = build_model().to(device)
+torch_model = build_model()
 
 model_path = f'./vanilla_kd_model_saved_base/{args.model}_student_{args.pair_keys}.pth'
 batch_size = 1
 
-# map_location = lambda storage, loc: storage
-# if torch.cuda.is_available():
-#     map_location = None
+map_location = lambda storage, loc: storage
+if torch.cuda.is_available():
+    map_location = None
 
-state_dict = torch.load(model_path, map_location = None)
+state_dict = torch.load(model_path, map_location = map_location)
 torch_model.load_state_dict(state_dict)
 
 torch_model.eval()
 
+x = torch.randn(batch_size, 3, 32, 32)
 
-batch = next(iter(trainLoader))
+torch_out = torch_model(x)
 
-batch = batch.to(device)
-torch_out = torch_model(batch.text)
+make_dot(torch_out, params=dict(torch_model.named_parameters())).render(f"cnn_torchviz_{args.model}_{args.pair_keys}", format="png")
 
-# make_dot(torch_out, params=dict(torch_model.named_parameters())).render("cnn_torchviz2", format="png")
 
-transforms = [hl.transforms.Prune('Constant')]
-
-graph = hl.build_graph(torch_model, batch.text, transforms=transforms)
-graph.theme = hl.graph.THEMES['blue'].copy()
-graph.save('cnn_hiddenlayer', format='png')

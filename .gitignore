@@ -12,3 +12,4 @@ cifar10/cifar-10-batches-py/test_batch
 cifar10/cifar-10-python.tar.gz
 models/__pycache__/resnet_last_down_extract.cpython-38.pyc
 base_model_saved/resnet18_base.pth
+cnn_torchviz_resnet34_6
