@@ -81,7 +81,7 @@ if __name__ == '__main__':
         net = build_model_base()#.to(device)
         summary(net, (3, 32, 32))
         net.load_state_dict(torch.load(f'./base_model_saved/{args.model}_base.pth',
-                                       map_location=torch.device('cpu')))
+                                       map_location=torch.device('cuda:0')))
         with torch.no_grad():
             val_loss = 0
             correct = 0
@@ -102,7 +102,7 @@ if __name__ == '__main__':
 
             summary(net, (3, 32, 32))
             net.load_state_dict(torch.load(f'./vanilla_kd_model_saved_base/{args.model}_{args.type}_{args.pair_keys}.pth',
-                                           map_location=torch.device('cpu')))
+                                           map_location=torch.device('cuda:0')))
             with torch.no_grad():
                 val_loss = 0
                 correct = 0
@@ -125,7 +125,7 @@ if __name__ == '__main__':
 
             summary(net, (3, 32, 32))
             net.load_state_dict(torch.load(f'./vanilla_kd_model_saved_base/{args.model}_{args.type}_{args.pair_keys}.pth',
-                                           map_location=torch.device('cpu')))
+                                           map_location=torch.device('cuda:0')))
 
             with torch.no_grad():
                 val_loss = 0
