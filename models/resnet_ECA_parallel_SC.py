@@ -31,8 +31,8 @@ class ResNet(nn.Module):
             last_features = base_dim * 8
 
         elif block is Bottleneck:
-            modules0 += [block(base_dim, base_dim, base_dim * 4)]
-            modules0 += [block(base_dim * 4, base_dim, base_dim * 4) for _ in range(num_layer[0] - 1)]
+            modules0 += [block(base_dim, base_dim, base_dim * 4, eca=True)]
+            modules0 += [block(base_dim * 4, base_dim, base_dim * 4, eca=True) for _ in range(num_layer[0] - 1)]
 
             modules0 += [block(base_dim * 4, base_dim * 2, base_dim * 8, down=True)]
             modules0 += [block(base_dim * 8, base_dim * 2, base_dim * 8) for _ in range(num_layer[1] - 1)]
@@ -119,7 +119,7 @@ class Basic(nn.Module):
 
 class Bottleneck(nn.Module):
 
-    def __init__(self, in_dim, mid_dim, out_dim, down=False):
+    def __init__(self, in_dim, mid_dim, out_dim, down=False, eca=False):
         super().__init__()
         stride = 2 if down else 1
 
@@ -141,12 +141,23 @@ class Bottleneck(nn.Module):
 
         self.relu = nn.ReLU(inplace=True)
 
+        # ECA IN PARALLELS
+        self.eca_pool = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1)) if eca else None
+        self.eca_conv = nn.Sequential(
+            nn.Conv1d(1, 1, kernel_size=3, padding=(3 - 1) // 2, bias=False)) if eca else None
+
     def forward(self, x):
         out = self.layer(x)
         if self.down:
             x = self.down(x)
         if self.dim_equalizer:
             x = self.dim_equalizer(x)
+        if self.eca_pool and self.eca_conv:
+            eca_out = self.eca_pool(x)
+            eca_out = self.eca_conv(eca_out.squeeze(-1).transpose(-1, -2)).transpose(-1, -2).unsqueeze(-1)
+            eca_out = torch.sigmoid(eca_out)
+            x = x + eca_out.expand_as(x)
         return self.relu(out + x)
 
 
