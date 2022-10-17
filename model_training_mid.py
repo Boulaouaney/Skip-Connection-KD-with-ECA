@@ -4,7 +4,9 @@ import torchvision
 import torchvision.transforms as transforms
 import argparse
 from progress_bar import progress_bar
-import models.resnet_ECA_parallel_SC as resnet_down
+import models.resnet_ECA_parallel_SC as resnet_ECA_parallel
+import models.resnet_last_down_extract as resnet_down_origin
+import models.resnet_ECA_last_block_SC as resnet_ECA_last
 import torch.nn.functional as F
 import torch
 from torch.utils.data import DataLoader
@@ -28,6 +30,8 @@ if __name__ == '__main__':
     parser.add_argument('--alpha', type=float, default=0.3, help='---Distillation weight (alpha) (default: 0.3)---')
     parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
     parser.add_argument('--epoch', default=300, type=int, help='epoch number')
+    parser.add_argument('--ECA', type=str, default='yes',help='---model with ECA or without')
+    parser.add_argument('--ECA_block', type=str, default='parallel', help='---ECA block in parallel or last')
     args, unparsed = parser.parse_known_args()
 
     device = 'cuda:0'
@@ -45,30 +49,12 @@ if __name__ == '__main__':
     val_loss_kd = []
 
 
-    def build_model():
-        if args.model == 'resnet18':
-            return resnet_down.__dict__[model_names[0]]()
-        elif args.model == 'resnet34':
-            return resnet_down.__dict__[model_names[1]]()
-        elif args.model == 'resnet50':
-            return resnet_down.__dict__[model_names[2]]()
-        elif args.model == 'resnet101':
-            return resnet_down.__dict__[model_names[3]]()
-        elif args.model == 'resnet152':
-            return resnet_down.__dict__[model_names[4]]()
-
-
-    def build_model_kd():
-        if args.model_kd == 'resnet18':
-            return resnet_down.__dict__[model_names[0]]()
-        elif args.model_kd == 'resnet34':
-            return resnet_down.__dict__[model_names[1]]()
-        elif args.model_kd == 'resnet50':
-            return resnet_down.__dict__[model_names[2]]()
-        elif args.model_kd == 'resnet101':
-            return resnet_down.__dict__[model_names[3]]()
-        elif args.model_kd == 'resnet152':
-            return resnet_down.__dict__[model_names[4]]()
+    def build_model_ECA_parallel():
+        return resnet_ECA_parallel.__dict__[args.model](), resnet_ECA_parallel.__dict__[args.model_kd]()
+    def build_model_ECA_last():
+        return resnet_ECA_last.__dict__[args.model](), resnet_ECA_last.__dict__[args.model_kd]()
+    def build_model_origin():
+        return resnet_down_origin.__dict__[args.model](), resnet_down_origin.__dict__[args.model_kd]()
 
 
     print('Teacher model type: ', args.model)
@@ -183,10 +169,16 @@ if __name__ == '__main__':
 
         return correct, val_loss
 
+    if args.ECA == 'no':
+        models_teacher, distil_models = build_model_origin()
+    elif args.ECA == 'yes':
+        if args.ECA_block == 'parallel':
+            models_teacher, distil_models = build_model_ECA_parallel()
+        elif args.ECA_block == 'last':
+            models_teacher, distil_models = build_model_ECA_last()
 
-    models_teacher = build_model().to(device)
-    # models_teacher.load_state_dict(torch.load(f'./vanilla_kd_model_saved_base/{args.model}_teacher.pth'))
-    distil_models = build_model_kd().to(device)
+    models_teacher = models_teacher.to(device)
+    distil_models = distil_models.to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer_teacher = optim.SGD(models_teacher.parameters(), lr=args.lr,
                                   momentum=args.momentum, weight_decay=args.weight_decay)

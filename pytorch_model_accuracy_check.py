@@ -29,40 +29,11 @@ if __name__ == '__main__':
     device = 'cuda:0'
 
     def build_model_ECA_parallel():
-        if args.model == 'resnet18':
-            return resnet_ECA_parallel.__dict__[model_names[0]]()
-        elif args.model == 'resnet34':
-            return resnet_ECA_parallel.__dict__[model_names[1]]()
-        elif args.model == 'resnet50':
-            return resnet_ECA_parallel.__dict__[model_names[2]]()
-        elif args.model == 'resnet101':
-            return resnet_ECA_parallel.__dict__[model_names[3]]()
-        elif args.model == 'resnet152':
-            return resnet_ECA_parallel.__dict__[model_names[4]]()
-
+        return resnet_ECA_parallel.__dict__[args.model]()
     def build_model_ECA_last():
-        if args.model == 'resnet18':
-            return resnet_ECA_last.__dict__[model_names[0]]()
-        elif args.model == 'resnet34':
-            return resnet_ECA_last.__dict__[model_names[1]]()
-        elif args.model == 'resnet50':
-            return resnet_ECA_last.__dict__[model_names[2]]()
-        elif args.model == 'resnet101':
-            return resnet_ECA_last.__dict__[model_names[3]]()
-        elif args.model == 'resnet152':
-            return resnet_ECA_last.__dict__[model_names[4]]()
+        return resnet_ECA_last.__dict__[args.model]()
     def build_model_origin():
-        if args.model == 'resnet18':
-            return resnet_down_origin.__dict__[model_names[0]]()
-        elif args.model == 'resnet34':
-            return resnet_down_origin.__dict__[model_names[1]]()
-        elif args.model == 'resnet50':
-            return resnet_down_origin.__dict__[model_names[2]]()
-        elif args.model == 'resnet101':
-            return resnet_down_origin.__dict__[model_names[3]]()
-        elif args.model == 'resnet152':
-            return resnet_down_origin.__dict__[model_names[4]]()
-
+        return resnet_down_origin.__dict__[args.model]()
 
 
     array = torch.randn((32, 256, 8, 8))
@@ -80,85 +51,37 @@ if __name__ == '__main__':
     #number_of_classes = 10
     #confusion_matrix = torch.zeros(number_of_classes, number_of_classes)
 
-
     if args.ECA == 'no':
-        net = build_model_origin().to(device)
-        net.eval()
-        summary(net, (3, 32, 32))
-        net.load_state_dict(torch.load(f'./vanilla_kd_model_saved_base/{args.model}_{args.type}_{args.pair_keys}.pth',
-                                       map_location=torch.device('cuda:0')))
-
-        with torch.no_grad():
-            val_loss = 0
-            correct = 0
-            total = 0
-
-            for batch_idx, (data, target) in enumerate(testLoader):
-                data, target = data.to(device), target.to(device)
-
-                output_1, output = net(data)
-                loss = criterion(output, target)
-
-                val_loss += loss.item()
-                output = net(data)
-                _, predicted = output[1].max(1)
-                total += target.size(0)
-                correct += predicted.eq(target).sum().item()
-
-                progress_bar(batch_idx, len(testLoader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-                         % (val_loss / (batch_idx + 1), 100. * correct / total, correct, total))
-
+        net = build_model_origin()
     elif args.ECA == 'yes':
         if args.ECA_block == 'parallel':
-            net = build_model_ECA_parallel().to(device)
-            net.eval()
-
-            summary(net, (3, 32, 32))
-            net.load_state_dict(torch.load(f'./vanilla_kd_model_saved_base/{args.model}_{args.type}_{args.pair_keys}.pth',
-                                           map_location=torch.device('cuda:0')))
-            with torch.no_grad():
-                val_loss = 0
-                correct = 0
-                total = 0
-
-                for batch_idx, (data, target) in enumerate(testLoader):
-                    data, target = data.to(device), target.to(device)
-
-                    output_1, output = net(data)
-                    loss = criterion(output, target)
-
-                    val_loss += loss.item()
-                    output = net(data)
-                    _, predicted = output[1].max(1)
-                    total += target.size(0)
-                    correct += predicted.eq(target).sum().item()
-
-                    progress_bar(batch_idx, len(testLoader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-                                 % (val_loss / (batch_idx + 1), 100. * correct / total, correct, total))
+            net = build_model_ECA_parallel()
         elif args.ECA_block == 'last':
-            net = build_model_ECA_last().to(device)
-            net.eval()
-            print(net)
-            summary(net, (3, 32, 32))
-            net.load_state_dict(torch.load(f'./vanilla_kd_model_saved_base/{args.model}_{args.type}_{args.pair_keys}.pth',
-                                           map_location=torch.device('cuda:0')))
+            net = build_model_ECA_last()
 
-            with torch.no_grad():
-                val_loss = 0
-                correct = 0
-                total = 0
 
-                for batch_idx, (data, target) in enumerate(testLoader):
-                    data, target = data.to(device), target.to(device)
+    net = net.to(device)
+    net.eval()
+    summary(net, (3, 32, 32))
+    net.load_state_dict(torch.load(f'./vanilla_kd_model_saved_base/{args.model}_{args.type}_{args.pair_keys}.pth',
+                                   map_location=torch.device('cuda:0')))
 
-                    output_1, output = net(data)
-                    loss = criterion(output, target)
+    with torch.no_grad():
+        val_loss = 0
+        correct = 0
+        total = 0
 
-                    val_loss += loss.item()
-                    output = net(data)
-                    _, predicted = output[1].max(1)
-                    total += target.size(0)
-                    correct += predicted.eq(target).sum().item()
+        for batch_idx, (data, target) in enumerate(testLoader):
+            data, target = data.to(device), target.to(device)
 
-                    progress_bar(batch_idx, len(testLoader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-                             % (val_loss / (batch_idx + 1), 100. * correct / total, correct, total))
+            output_1, output = net(data)
+            loss = criterion(output, target)
+
+            val_loss += loss.item()
+            output = net(data)
+            _, predicted = output[1].max(1)
+            total += target.size(0)
+            correct += predicted.eq(target).sum().item()
+
+            progress_bar(batch_idx, len(testLoader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
+                     % (val_loss / (batch_idx + 1), 100. * correct / total, correct, total))
