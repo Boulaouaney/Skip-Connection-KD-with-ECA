@@ -130,6 +130,8 @@ if __name__ == '__main__':
             optimizer.zero_grad()
             output1_t, output_t = model(data)
             output1_s, output_s = distil_model(data)
+            output1_s = F.pad(output1_s, (output1_t.size(1) - output1_s.size(1), 0))
+
             kd_loss = F.mse_loss(output1_s, output1_t.detach()) * distil_weights
             kd_loss_cls = criterion(output_s, target)
             loss_kd = kd_loss + kd_loss_cls
