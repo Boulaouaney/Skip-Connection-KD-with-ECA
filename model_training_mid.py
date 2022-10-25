@@ -3,6 +3,10 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 import argparse
+import matplotlib.pyplot as plt
+
+from torch.utils.tensorboard import SummaryWriter
+
 from progress_bar import progress_bar
 import models.resnet_ECA_parallel_SC as resnet_ECA_parallel
 import models.resnet_last_down_extract as resnet_down_origin
@@ -88,16 +92,56 @@ if __name__ == '__main__':
     classes = ('plane', 'car', 'bird', 'cat', 'deer',
                'dog', 'frog', 'horse', 'ship', 'truck')
 
+    writer = SummaryWriter(f'runs/experiments/{args.model}_{args.model_kd}_{args.ECA}_{args.ECA_block}_{args.pair_keys}')
+
+    def matplotlib_imshow(img):
+        npimg = img.cpu().numpy()
+        plt.imshow(np.transpose(npimg, (1, 2, 0)))
+
+    def images_to_probs(net, images):
+        '''
+        Generates predictions and corresponding probabilities from a trained
+        network and a list of images
+        '''
+        output = net(images)
+        # convert output probabilities to predicted class
+        _, preds_tensor = torch.max(output[1], 1)
+        preds = np.squeeze(preds_tensor.cpu().numpy())
+        return preds, [F.softmax(el, dim=0)[i].item() for i, el in zip(preds, output[1])]
+
+
+    def plot_classes_preds(net, images, labels):
+        '''
+        Generates matplotlib Figure using a trained network, along with images
+        and labels from a batch, that shows the network's top prediction along
+        with its probability, alongside the actual label, coloring this
+        information based on whether the prediction was correct or not.
+        Uses the "images_to_probs" function.
+        '''
+        preds, probs = images_to_probs(net, images)
+        # plot the images in the batch, along with predicted and true labels
+        fig = plt.figure(figsize=(12, 12))
+        for idx in np.arange(5):
+            ax = fig.add_subplot(1, 5, idx + 1, xticks=[], yticks=[])
+            matplotlib_imshow(images[idx])
+            ax.set_title("{0}, {1:.1f}%\n(label: {2})".format(
+                classes[preds[idx]],
+                probs[idx] * 100.0,
+                classes[labels[idx]]),
+                color=("green" if preds[idx] == labels[idx].item() else "red"))
+        return fig
+
     print('==> Building model..')
 
 
-    def train(model, loader, optimizer):
+    def train(model, loader, optimizer, epoch):
         model.train()
 
         train_loss = 0
         correct = 0
         total = 0
 
+        running_loss = 0.0
         for batch_idx, (data, target) in enumerate(loader):
             data, target = data.to(device), target.to(device)
 
@@ -111,18 +155,37 @@ if __name__ == '__main__':
             _, predicted = output.max(1)
             total += target.size(0)
             correct += predicted.eq(target).sum().item()
+
+            # log to tensorboard every 100 mini batches
+            running_loss += loss.item()
+            if batch_idx % 100 == 99:
+                writer.add_scalar('Teacher/training Loss',
+                                  running_loss / 100,
+                                  epoch * len(loader) + batch_idx)
+
+                writer.add_scalar('Teacher/training accuracy',
+                                  100. * correct / total,
+                                  epoch * len(loader) + batch_idx)
+
+                writer.add_figure('Teacher/predictions vs. actuals',
+                                  plot_classes_preds(model, data, target),
+                                  global_step=epoch * len(loader) + batch_idx)
+                running_loss = 0.0
+
             progress_bar(batch_idx, len(trainLoader), 'Teacher: Loss: %.3f | Acc: %.3f%% (%d/%d)'
                          % (train_loss / (batch_idx + 1), 100. * correct / total, correct, total))
         return correct, train_loss
 
 
-    def train_distil(model, distil_model, loader, optimizer, distil_weights):
+    def train_distil(model, distil_model, loader, optimizer, distil_weights, epoch):
         model.eval()
         distil_model.train()
 
         train_loss_kd = 0
         correct_kd = 0
         total_kd = 0
+
+        running_loss = 0.0
 
         for batch_idx, (data, target) in enumerate(loader):
             data, target = data.to(device), target.to(device)
@@ -142,12 +205,28 @@ if __name__ == '__main__':
             _, predicted = output_s.max(1)
             total_kd += target.size(0)
             correct_kd += predicted.eq(target).sum().item()
+
+            # log to tensorboard every 100 mini batches
+            running_loss += loss_kd.item()
+            if batch_idx % 100 == 99:
+                writer.add_scalar('Student/training Loss',
+                                  running_loss / 100,
+                                  epoch * len(loader) + batch_idx)
+                writer.add_scalar('Student/training accuracy',
+                                  100. * correct_kd / total_kd,
+                                  epoch * len(loader) + batch_idx)
+
+                writer.add_figure('Student/predictions vs. actuals',
+                                  plot_classes_preds(distil_model, data, target),
+                                  global_step=epoch * len(loader) + batch_idx)
+                running_loss = 0.0
+
             progress_bar(batch_idx, len(trainLoader), 'Student: Loss: %.3f | Acc: %.3f%% (%d/%d)'
                          % (train_loss_kd / (batch_idx + 1), 100. * correct_kd / total_kd, correct_kd, total_kd))
         return correct_kd, train_loss_kd
 
 
-    def validate(model, loader):
+    def validate(model, loader, who, epoch):
         model.eval()
 
         val_loss = 0
@@ -166,6 +245,13 @@ if __name__ == '__main__':
                 total += target.size(0)
                 correct += predicted.eq(target).sum().item()
 
+                writer.add_scalar(f'{who}/validation Loss',
+                                  val_loss / (batch_idx + 1),
+                                  epoch)
+                writer.add_scalar(f'{who}/validation accuracy',
+                                  100. * correct / total,
+                                  epoch)
+
                 progress_bar(batch_idx, len(testLoader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
                              % (val_loss / (batch_idx + 1), 100. * correct / total, correct, total))
 
@@ -181,6 +267,13 @@ if __name__ == '__main__':
 
     models_teacher = models_teacher.to(device)
     distil_models = distil_models.to(device)
+
+    dataiter = iter(trainLoader)
+    images, labels = next(dataiter)
+    images, labels = images.to(device), labels.to(device)
+    writer.add_graph(models_teacher, images)
+    writer.add_graph(distil_models, images)
+
     criterion = nn.CrossEntropyLoss()
     optimizer_teacher = optim.SGD(models_teacher.parameters(), lr=args.lr,
                                   momentum=args.momentum, weight_decay=args.weight_decay)
@@ -197,8 +290,8 @@ if __name__ == '__main__':
     print("Training Teacher first... =====>")
     for epoch in range(args.epoch):
         print('\nTeacher Epoch: %d' % epoch)
-        train_correct, training_loss = train(models_teacher, trainLoader, optimizer_teacher)
-        val_correct, validating_loss = validate(models_teacher, testLoader)
+        train_correct, training_loss = train(models_teacher, trainLoader, optimizer_teacher, epoch)
+        val_correct, validating_loss = validate(models_teacher, testLoader, 'Teacher', epoch)
         scheduler_teacher.step()
         train_accuracy.append(train_correct)
         train_loss.append(training_loss)
@@ -228,8 +321,8 @@ if __name__ == '__main__':
     for epoch in range(args.epoch):
         print('\nStudent Epoch: %d' % epoch)
         train_correct_kd, training_loss_kd = train_distil(models_teacher, distil_models, trainLoader, optimizer_student,
-                                                          distil_weight)
-        val_correct_kd, validating_loss_kd = validate(distil_models, testLoader)
+                                                          distil_weight, epoch)
+        val_correct_kd, validating_loss_kd = validate(distil_models, testLoader, 'Student', epoch)
         scheduler_student.step()
 
         train_accuracy_kd.append(train_correct_kd)
@@ -242,7 +335,9 @@ if __name__ == '__main__':
             best_loss_kd = validating_loss_kd
             torch.save(distil_models.state_dict(), f'./vanilla_kd_model_saved_base/{args.model}_student_{args.pair_keys}.pth')
 
-    print("Saving Teacher Numpy Outputs... =====>")
+    writer.close()
+
+    print("Saving Student Numpy Outputs... =====>")
     train_accuracy_np_kd = np.asarray(train_accuracy_kd)
     train_loss_np_kd = np.asarray(train_loss_kd)
 
