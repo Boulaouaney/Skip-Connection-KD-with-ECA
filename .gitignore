@@ -320,3 +320,4 @@ numpy_outputs/train_accuracy_teacher_91.npy
 numpy_outputs/train_loss_teacher_91.npy
 numpy_outputs/val_accuracy_teacher_91.npy
 numpy_outputs/val_loss_teacher_91.npy
+*.pth
