@@ -116,6 +116,7 @@ if __name__ == '__main__':
     net.eval()
     net.load_state_dict(torch.load(f'./vanilla_kd_model_saved_base/{args.model}_{args.type}_{args.pair_keys}.pth',
                                    map_location=torch.device('cuda:0')))
+    print(net)
     with torch.no_grad():
         val_loss = 0
         correct = 0

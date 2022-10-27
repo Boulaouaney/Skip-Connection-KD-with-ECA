@@ -23,7 +23,7 @@ torch.cuda.empty_cache()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch Cifar10 Training with KD')
-    parser.add_argument('--batch', default=64, type=int, help='batch size')
+    parser.add_argument('--batch', default=32, type=int, help='batch size')
     parser.add_argument('--shuffle', default=True, type=bool, help='shuffle the training dataset')
     parser.add_argument('--model', type=str, required=True, help='---Model type: resnet18, resnet34, resnet50---')
     parser.add_argument('--model_kd', type=str, required=True, help='---Model type: resnet18, resnet34, resnet50---')
