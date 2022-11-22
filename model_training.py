@@ -16,14 +16,14 @@ torch.cuda.empty_cache()
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='PyTorch Cifar10 Training')
-    parser.add_argument('--batch', default=256, type=int, help='batch size')
+    parser.add_argument('--batch', default=32, type=int, help='batch size')
     parser.add_argument('--shuffle', default=True, type=bool, help='shuffle the training dataset')
     parser.add_argument('--model', type=str, required=True,
                         help='---Model type: conv, googlenet, resnet34, resnet50---')
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=5e-4)
-    parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
-    parser.add_argument('--epoch', default=600, type=int, help='epoch number')
+    parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
+    parser.add_argument('--epoch', default=200, type=int, help='epoch number')
     args, unparsed = parser.parse_known_args()
 
 
@@ -59,7 +59,6 @@ if __name__ == '__main__':
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
         transforms.RandomVerticalFlip(),
-        #transforms.Grayscale(),
         transforms.ToTensor()])
         #transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
 
