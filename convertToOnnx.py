@@ -27,7 +27,7 @@ def build_model():
 
 torch_model = build_model()
 
-model_path = f'./vanilla_kd_model_saved_base/{args.model}_student_{args.pair_keys}.pth'
+model_path = f'./saved_pth_model/{args.model}_student_{args.pair_keys}.pth'
 batch_size = 1
 
 map_location = lambda storage, loc: storage
@@ -45,7 +45,7 @@ torch_out = torch_model(x)
 
 torch.onnx.export(torch_model,
                   x,
-                  f"./vanilla_kd_ECA_ONNX_model/{args.model}_Student_model_{args.pair_keys}.onnx",
+                  f"./ONNX_model/{args.model}_Student_model_{args.pair_keys}.onnx",
                   export_params=True,
                   opset_version=10,
                   do_constant_folding=True,

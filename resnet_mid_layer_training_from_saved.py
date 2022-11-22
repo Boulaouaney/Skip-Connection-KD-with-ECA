@@ -165,7 +165,7 @@ if __name__ == '__main__':
 
     print("Initializing Teacher first... =====>")
     models_teacher = build_model().to(device)
-    models_teacher.load_state_dict(torch.load(f'./vanilla_kd_model_saved_base/{args.model}_teacher_{args.pair_keys}.pth'))
+    models_teacher.load_state_dict(torch.load(f'./saved_pth_model/{args.model}_teacher_{args.pair_keys}.pth'))
 
     distil_models = build_model_kd().to(device)
     criterion = nn.CrossEntropyLoss()
@@ -198,7 +198,7 @@ if __name__ == '__main__':
         if epoch >= 0 and (validating_loss_kd - best_loss_kd) < 0:
             best_loss_kd = validating_loss_kd
             torch.save(distil_models.state_dict(),
-                       f'./vanilla_kd_model_saved_base/{args.model_kd}_student_{args.pair_keys}.pth')
+                       f'./saved_pth_model/{args.model_kd}_student_{args.pair_keys}.pth')
 
     train_accuracy_np_kd = np.asarray(train_accuracy_kd)
     train_loss_np_kd = np.asarray(train_loss_kd)

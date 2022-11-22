@@ -65,7 +65,7 @@ elif args.ECA == 'yes':
     elif args.ECA_block == 'last':
         torch_model = build_model_ECA_last()
 
-model_path = f'./vanilla_kd_model_saved_base/{args.model}_student_{args.pair_keys}.pth'
+model_path = f'./saved_pth_model/{args.model}_student_{args.pair_keys}.pth'
 batch_size = 1
 
 map_location = lambda storage, loc: storage

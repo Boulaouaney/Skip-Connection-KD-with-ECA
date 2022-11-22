@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 import models.resnet_ECA_parallel_SC as resnet_ECA_parallel
 import models.resnet_last_down_extract as resnet_down_origin
 import models.resnet_ECA_last_block_SC as resnet_ECA_last
+import models.resnet as resnet
 
 import torch.nn as nn
 import torch.nn.functional as F
@@ -103,6 +104,7 @@ if __name__ == '__main__':
         net = build_model_origin()
     elif args.ECA == 'yes':
         if args.ECA_block == 'parallel':
+            # net = resnet.resnet18()
             net = build_model_ECA_parallel()
         elif args.ECA_block == 'last':
             net = build_model_ECA_last()
@@ -114,13 +116,29 @@ if __name__ == '__main__':
 
     net.to(device)
     net.eval()
-    net.load_state_dict(torch.load(f'./vanilla_kd_model_saved_base/{args.model}_{args.type}_{args.pair_keys}.pth',
+    # net.load_state_dict(torch.load(f'./base_model_saved/resnet18_base.pth',
+    #                                map_location=torch.device('cuda:0')))
+    net.load_state_dict(torch.load(f'./saved_pth_model/{args.model}_{args.type}_{args.pair_keys}.pth',
                                    map_location=torch.device('cuda:0')))
     print(net)
     with torch.no_grad():
         val_loss = 0
         correct = 0
         total = 0
+
+        # for batch_idx, (data, target) in enumerate(testLoader):
+        #     data, target = data.to(device), target.to(device)
+        #
+        #     output = net(data)
+        #     loss = criterion(output, target)
+        #
+        #     val_loss += loss.item()
+        #     _, predicted = output.max(1)
+        #     total += target.size(0)
+        #     correct += predicted.eq(target).sum().item()
+        #
+        #     progress_bar(batch_idx, len(testLoader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
+        #                  % (val_loss / (batch_idx + 1), 100. * correct / total, correct, total))
 
         for batch_idx, (data, target) in enumerate(testLoader):
             data, target = data.to(device), target.to(device)

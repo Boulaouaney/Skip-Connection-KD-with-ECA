@@ -301,7 +301,7 @@ if __name__ == '__main__':
         torch.cuda.empty_cache()
         if epoch >= 0 and (validating_loss - best_loss) < 0:
             best_loss = validating_loss
-            torch.save(models_teacher.state_dict(), f'./vanilla_kd_model_saved_base/{args.model}_teacher_{args.pair_keys}.pth')
+            torch.save(models_teacher.state_dict(), f'./saved_pth_model/{args.model}_teacher_{args.pair_keys}.pth')
     print('\n')
 
     print("Saving Teacher Numpy Outputs... =====>")
@@ -333,7 +333,7 @@ if __name__ == '__main__':
         torch.cuda.empty_cache()
         if epoch >= 0 and (validating_loss_kd - best_loss_kd) < 0:
             best_loss_kd = validating_loss_kd
-            torch.save(distil_models.state_dict(), f'./vanilla_kd_model_saved_base/{args.model_kd}_student_{args.pair_keys}.pth')
+            torch.save(distil_models.state_dict(), f'./saved_pth_model/{args.model_kd}_student_{args.pair_keys}.pth')
 
     writer.close()
 
