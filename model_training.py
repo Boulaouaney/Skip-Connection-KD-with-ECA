@@ -8,90 +8,101 @@ import torchvision.transforms as transforms
 import argparse
 from progress_bar import *
 import models.resnet as resnet
+
 torch.cuda.empty_cache()
-#torch.backends.cudnn.deterministic = True
-#torch.backends.cudnn.benchmark = False
 
 
-if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser(description='PyTorch Cifar10 Training')
-    parser.add_argument('--batch', default=32, type=int, help='batch size')
-    parser.add_argument('--shuffle', default=True, type=bool, help='shuffle the training dataset')
-    parser.add_argument('--model', type=str, required=True,
-                        help='---Model type: conv, googlenet, resnet34, resnet50---')
-    parser.add_argument('--momentum', type=float, default=0.9)
-    parser.add_argument('--weight_decay', type=float, default=5e-4)
-    parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
-    parser.add_argument('--epoch', default=200, type=int, help='epoch number')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Train a ResNet model on CIFAR10.")
+    parser.add_argument("--batch", default=32, type=int, help="batch size")
+    parser.add_argument(
+        "--shuffle", default=True, type=bool, help="shuffle the training dataset"
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        required=True,
+        help="---Model type: conv, googlenet, resnet34, resnet50---",
+    )
+    parser.add_argument("--momentum", type=float, default=0.9)
+    parser.add_argument("--weight_decay", type=float, default=5e-4)
+    parser.add_argument("--lr", default=0.001, type=float, help="learning rate")
+    parser.add_argument("--epoch", default=200, type=int, help="epoch number")
     args, unparsed = parser.parse_known_args()
 
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-
-    device = 'cuda:0'
-        # if torch.cuda.is_available() else 'cpu'
-
-
-    model_names = ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152']
+    model_names = ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"]
     best_loss = sys.maxsize
     train_accuracy = []
     val_accuracy = []
     train_loss = []
     val_loss = []
 
-
     def build_model():
-        if args.model == 'resnet18':
+        if args.model == "resnet18":
             return resnet.__dict__[model_names[0]]()
-        elif args.model == 'resnet34':
+        elif args.model == "resnet34":
             return resnet.__dict__[model_names[1]]()
-        elif args.model == 'resnet50':
+        elif args.model == "resnet50":
             return resnet.__dict__[model_names[2]]()
-        elif args.model == 'resnet101':
+        elif args.model == "resnet101":
             return resnet.__dict__[model_names[3]]()
-        elif args.model == 'resnet152':
+        elif args.model == "resnet152":
             return resnet.__dict__[model_names[4]]()
 
+    print("==> Preparing data..")
 
-    print('==> Preparing data..')
+    transform_train = transforms.Compose(
+        [
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            transforms.ToTensor(),
+        ]
+    )
 
-    transform_train = transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomVerticalFlip(),
-        transforms.ToTensor()])
-        #transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
-
-    transform_test = transforms.Compose([
-        #transforms.Grayscale(),
-        transforms.ToTensor()])
-        #transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
-
+    transform_test = transforms.Compose([transforms.ToTensor()])
 
     trainset = torchvision.datasets.CIFAR10(
-        root='./cifar10', train=True, download=True, transform=transform_train)
+        root="./cifar10", train=True, download=True, transform=transform_train
+    )
 
     trainLoader = DataLoader(
-        trainset, batch_size=args.batch, shuffle=args.shuffle, num_workers=2)
+        trainset, batch_size=args.batch, shuffle=args.shuffle, num_workers=2
+    )
 
     testset = torchvision.datasets.CIFAR10(
-        root='./cifar10', train=False, download=True, transform=transform_test)
+        root="./cifar10", train=False, download=True, transform=transform_test
+    )
 
-    testLoader = DataLoader(
-        testset, batch_size=100, shuffle=False, num_workers=2)
+    testLoader = DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
 
-    classes = ('plane', 'car', 'bird', 'cat', 'deer',
-               'dog', 'frog', 'horse', 'ship', 'truck')
+    classes = (
+        "plane",
+        "car",
+        "bird",
+        "cat",
+        "deer",
+        "dog",
+        "frog",
+        "horse",
+        "ship",
+        "truck",
+    )
 
-    print('==> Building model..')
+    print("==> Building model..")
 
     models = build_model().to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(models.parameters(), lr=args.lr,
-                          momentum=args.momentum, weight_decay=args.weight_decay)
+    optimizer = optim.SGD(
+        models.parameters(),
+        lr=args.lr,
+        momentum=args.momentum,
+        weight_decay=args.weight_decay,
+    )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
-
 
     def train(model, loader, optimizer):
         model.train()
@@ -113,10 +124,18 @@ if __name__ == '__main__':
             _, predicted = output.max(1)
             total += target.size(0)
             correct += predicted.eq(target).sum().item()
-            progress_bar(batch_idx, len(trainLoader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-                         % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
+            progress_bar(
+                batch_idx,
+                len(trainLoader),
+                "Loss: %.3f | Acc: %.3f%% (%d/%d)"
+                % (
+                    train_loss / (batch_idx + 1),
+                    100.0 * correct / total,
+                    correct,
+                    total,
+                ),
+            )
         return correct, train_loss
-
 
     def validate(model, loader):
         model.eval()
@@ -137,14 +156,22 @@ if __name__ == '__main__':
                 total += target.size(0)
                 correct += predicted.eq(target).sum().item()
 
-                progress_bar(batch_idx, len(testLoader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-                             % (val_loss/(batch_idx+1), 100.*correct/total, correct, total))
+                progress_bar(
+                    batch_idx,
+                    len(testLoader),
+                    "Loss: %.3f | Acc: %.3f%% (%d/%d)"
+                    % (
+                        val_loss / (batch_idx + 1),
+                        100.0 * correct / total,
+                        correct,
+                        total,
+                    ),
+                )
 
         return correct, val_loss
 
-
     for epoch in range(args.epoch):
-        print('\nEpoch: %d' % (epoch+1))
+        print("\nEpoch: %d" % (epoch + 1))
         train_correct, training_loss = train(models, trainLoader, optimizer)
         val_correct, validating_loss = validate(models, testLoader)
         scheduler.step()
@@ -156,7 +183,7 @@ if __name__ == '__main__':
         torch.cuda.empty_cache()
         if epoch >= 0 and (validating_loss - best_loss) < 0:
             best_loss = validating_loss
-            torch.save(models.state_dict(), f'./base_model_saved/{args.model}_base.pth')
+            torch.save(models.state_dict(), f"./base_model_saved/{args.model}_base.pth")
 
     train_accuracy_np = np.asarray(train_accuracy)
     train_loss_np = np.asarray(train_loss)
@@ -164,9 +191,8 @@ if __name__ == '__main__':
     val_accuracy_np = np.asarray(val_accuracy)
     val_loss_np = np.asarray(val_loss)
 
-    np.save(f'./numpy_outputs/train_accuracy_{args.model}', train_accuracy_np)
-    np.save(f'./numpy_outputs/train_loss_{args.model}', train_loss_np)
+    np.save(f"./numpy_outputs/train_accuracy_{args.model}", train_accuracy_np)
+    np.save(f"./numpy_outputs/train_loss_{args.model}", train_loss_np)
 
-    np.save(f'./numpy_outputs/val_accuracy_{args.model}', val_accuracy_np)
-    np.save(f'./numpy_outputs/val_loss_{args.model}', val_loss_np)
-
+    np.save(f"./numpy_outputs/val_accuracy_{args.model}", val_accuracy_np)
+    np.save(f"./numpy_outputs/val_loss_{args.model}", val_loss_np)
